@@ -149,9 +149,9 @@ def print_papers(papers: List[Dict[str, Any]], title: str, start_num: int) -> in
         print(f"\n{title}: 未找到")
         return start_num
 
-    print(f"\n{'=' * 70}")
+    print(f"\n{'=' * 34}")
     print(f"{title}")
-    print(f"{'=' * 70}")
+    print(f"{'=' * 34}")
 
     count = 0
     for paper_info in papers:
@@ -186,7 +186,7 @@ def print_papers(papers: List[Dict[str, Any]], title: str, start_num: int) -> in
             print(f"... (共 {len(paper_info['summary'])} 字符)")
 
         print(f"\nPDF链接: {paper_info['pdf_url']}")
-        print(f"{'=' * 70}")
+        print(f"{'=' * 34}")
 
         count += 1
 
@@ -200,7 +200,7 @@ def format_papers_for_email(
     lines = []
     lines.append(f"日期: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append(f"新论文: {len(updated_papers) + len(published_papers)} 篇\n")
-    lines.append("=" * 70)
+    lines.append("=" * 34)
 
     count = 1
     for paper in updated_papers:
@@ -216,7 +216,7 @@ def format_papers_for_email(
         if summary:
             lines.append(f"\n要点: {summary}")
         lines.append(f"\n链接: {paper['pdf_url']}")
-        lines.append("=" * 70)
+        lines.append("=" * 34)
         count += 1
 
     for paper in published_papers:
@@ -231,7 +231,7 @@ def format_papers_for_email(
         if summary:
             lines.append(f"\n要点: {summary}")
         lines.append(f"\n链接: {paper['pdf_url']}")
-        lines.append("=" * 70)
+        lines.append("=" * 34)
         count += 1
 
     return "\n".join(lines)
@@ -250,7 +250,7 @@ def send_email_via_qq(
         return False
 
     smtp_server = "smtp.qq.com"
-    smtp_port = 465
+    smtp_port = 587
 
     try:
         msg = MIMEMultipart()
@@ -260,7 +260,8 @@ def send_email_via_qq(
         msg.attach(MIMEText(body, "plain", "utf-8"))
 
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context) as server:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls(context=context)
             server.login(sender, auth_code)
             server.sendmail(sender, recipient, msg.as_string())
 
@@ -278,7 +279,7 @@ def main():
     candidate_published: List[Dict[str, Any]] = []
 
     print("正在搜索AI和网络安全领域的最新论文...")
-    print("=" * 70)
+    print("=" * 34)
 
     if AI_CLIENT:
         print("使用 AI 摘要生成功能 (qwen-max)")
@@ -287,7 +288,6 @@ def main():
     print()
 
     new_count = 0
-    skip_count = 0
 
     for category in ["AI", "Security"]:
         print(f"\n搜索 {category} 类别论文...")
@@ -301,7 +301,6 @@ def main():
             for paper in recent_updated:
                 info = get_paper_info(paper)
                 if not is_new_version(info["pdf_url"], info["version"], downloaded):
-                    skip_count += 1
                     continue
                 candidate_updated.append(info)
                 updated_titles.add(info["title"])
@@ -310,7 +309,6 @@ def main():
                 info = get_paper_info(paper)
                 if info["title"] not in updated_titles:
                     if not is_new_version(info["pdf_url"], info["version"], downloaded):
-                        skip_count += 1
                         continue
                     candidate_published.append(info)
 
@@ -331,7 +329,7 @@ def main():
 
     save_downloaded_papers(downloaded)
 
-    print(f"\n总计: 新论文 {new_count} 篇, 跳过 {skip_count} 篇")
+    print(f"\n总计: 新论文 {new_count} 篇")
     print(f"已记录 {len(downloaded)} 篇论文到 {DOWNLOADED_PAPERS_FILE}")
 
     current_num = 1
