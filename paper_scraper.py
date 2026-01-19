@@ -144,55 +144,6 @@ def filter_recent_by_updated(
     return recent_papers
 
 
-def print_papers(papers: List[Dict[str, Any]], title: str, start_num: int) -> int:
-    if not papers:
-        print(f"\n{title}: 未找到")
-        return start_num
-
-    print(f"\n{'=' * 34}")
-    print(f"{title}")
-    print(f"{'=' * 34}")
-
-    count = 0
-    for paper_info in papers:
-        if count >= 2:
-            break
-
-        summary_brief_zh = ai_summarize_zh(paper_info["summary"])
-
-        print(f"\n论文 #{start_num + count}")
-        print(f"标题: {paper_info['title']}")
-        print(f"作者: {', '.join(paper_info['authors'][:5])}")
-        if len(paper_info["authors"]) > 5:
-            print(f"      ... 等 {len(paper_info['authors'])} 位作者")
-        print(f"发布时间: {paper_info['published'].strftime('%Y-%m-%d')}")
-        print(f"更新日期: {paper_info['updated'].strftime('%Y-%m-%d')}")
-        print(f"版本: v{paper_info['version']}")
-        print(f"分类: {paper_info['primary_category']}")
-        if paper_info["doi"]:
-            print(f"DOI: {paper_info['doi']}")
-        if paper_info["comment"]:
-            print(f"注释: {paper_info['comment']}")
-        if paper_info["journal_ref"]:
-            print(f"期刊引用: {paper_info['journal_ref']}")
-
-        if summary_brief_zh:
-            print(f"\n关键要点:")
-            print(summary_brief_zh)
-
-        print(f"\n完整摘要 [{len(paper_info['summary'])} 字符]:")
-        print(paper_info["summary"][:1000])
-        if len(paper_info["summary"]) > 1000:
-            print(f"... (共 {len(paper_info['summary'])} 字符)")
-
-        print(f"\nPDF链接: {paper_info['pdf_url']}")
-        print(f"{'=' * 34}")
-
-        count += 1
-
-    return start_num + count
-
-
 def format_papers_for_email(
     updated_papers: List[Dict[str, Any]],
     published_papers: List[Dict[str, Any]],
@@ -207,14 +158,25 @@ def format_papers_for_email(
         lines.append(f"\n【更新】论文 #{count}")
         lines.append(f"标题: {paper['title']}")
         lines.append(f"作者: {', '.join(paper['authors'][:5])}")
+        if len(paper["authors"]) > 5:
+            lines.append(f"      ... 等 {len(paper['authors'])} 位作者")
         lines.append(f"发布时间: {paper['published'].strftime('%Y-%m-%d')}")
         lines.append(f"更新日期: {paper['updated'].strftime('%Y-%m-%d')}")
         lines.append(f"版本: v{paper['version']}")
+        lines.append(f"分类: {paper['primary_category']}")
+        if paper.get("doi"):
+            lines.append(f"DOI: {paper['doi']}")
         if paper.get("comment"):
             lines.append(f"注释: {paper['comment']}")
+        if paper.get("journal_ref"):
+            lines.append(f"期刊引用: {paper['journal_ref']}")
         summary = ai_summarize_zh(paper["summary"])
         if summary:
             lines.append(f"\n要点: {summary}")
+        lines.append(f"\n完整摘要 [{len(paper['summary'])} 字符]:")
+        lines.append(paper["summary"][:1000])
+        if len(paper["summary"]) > 1000:
+            lines.append(f"... (共 {len(paper['summary'])} 字符)")
         lines.append(f"\n链接: {paper['pdf_url']}")
         lines.append("=" * 34)
         count += 1
@@ -223,13 +185,24 @@ def format_papers_for_email(
         lines.append(f"\n【发布】论文 #{count}")
         lines.append(f"标题: {paper['title']}")
         lines.append(f"作者: {', '.join(paper['authors'][:5])}")
+        if len(paper["authors"]) > 5:
+            lines.append(f"      ... 等 {len(paper['authors'])} 位作者")
         lines.append(f"发布时间: {paper['published'].strftime('%Y-%m-%d')}")
         lines.append(f"版本: v{paper['version']}")
+        lines.append(f"分类: {paper['primary_category']}")
+        if paper.get("doi"):
+            lines.append(f"DOI: {paper['doi']}")
         if paper.get("comment"):
             lines.append(f"注释: {paper['comment']}")
+        if paper.get("journal_ref"):
+            lines.append(f"期刊引用: {paper['journal_ref']}")
         summary = ai_summarize_zh(paper["summary"])
         if summary:
             lines.append(f"\n要点: {summary}")
+        lines.append(f"\n完整摘要 [{len(paper['summary'])} 字符]:")
+        lines.append(paper["summary"][:1000])
+        if len(paper["summary"]) > 1000:
+            lines.append(f"... (共 {len(paper['summary'])} 字符)")
         lines.append(f"\n链接: {paper['pdf_url']}")
         lines.append("=" * 34)
         count += 1
@@ -278,19 +251,7 @@ def main():
     candidate_updated: List[Dict[str, Any]] = []
     candidate_published: List[Dict[str, Any]] = []
 
-    print("正在搜索AI和网络安全领域的最新论文...")
-    print("=" * 34)
-
-    if AI_CLIENT:
-        print("使用 AI 摘要生成功能 (qwen-max)")
-    else:
-        print("警告: 未设置 OPENAI_API_KEY，AI 摘要功能不可用")
-    print()
-
-    new_count = 0
-
     for category in ["AI", "Security"]:
-        print(f"\n搜索 {category} 类别论文...")
         try:
             papers = search_papers(category, max_results=50)
 
@@ -311,11 +272,8 @@ def main():
                     if not is_new_version(info["pdf_url"], info["version"], downloaded):
                         continue
                     candidate_published.append(info)
-
-            print(f"  最近发布: {len(recent_published)} 篇")
-            print(f"  最近更新: {len(recent_updated)} 篇")
-        except Exception as e:
-            print(f"搜索 {category} 类别时出错: {e}")
+        except Exception:
+            continue
 
     candidate_updated.sort(key=lambda x: x["updated"], reverse=True)
     candidate_published.sort(key=lambda x: x["published"], reverse=True)
@@ -325,18 +283,8 @@ def main():
 
     for info in all_papers_by_updated + all_papers_by_published:
         downloaded[info["pdf_url"]] = info["version"]
-        new_count += 1
 
     save_downloaded_papers(downloaded)
-
-    print(f"\n总计: 新论文 {new_count} 篇")
-    print(f"已记录 {len(downloaded)} 篇论文到 {DOWNLOADED_PAPERS_FILE}")
-
-    current_num = 1
-    current_num = print_papers(all_papers_by_updated, "【最近更新】", current_num)
-    current_num = print_papers(all_papers_by_published, "【最近发布】", current_num)
-
-    print(f"\n共展示 {current_num - 1} 篇论文")
 
     recipient = os.environ.get("RECIPIENT_EMAIL")
     if recipient:
